@@ -12,8 +12,8 @@ from extract_features import build_dataset
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 image_folder = os.path.join(os.path.dirname(current_dir), 'dataset/images')
-model_output_path = os.path.join(os.path.dirname(current_dir), 'model/svm_model.pkl')
-scaler_output_path = os.path.join(os.path.dirname(current_dir), 'model/scaler.pkl')
+model_output_path = os.path.join(os.path.dirname(current_dir), 'model/svm_model.csv')
+scaler_output_path = os.path.join(os.path.dirname(current_dir), 'model/scaler.csv')
 report_output_path = os.path.join(os.path.dirname(current_dir), 'reports/classification_report.txt')
 
 def main():
