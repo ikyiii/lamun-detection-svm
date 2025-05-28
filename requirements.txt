@@ -8,3 +8,4 @@ matplotlib
 imbalanced-learn
 joblib
 Pillow
+opencv-python
