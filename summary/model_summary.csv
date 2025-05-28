@@ -1,0 +1,17 @@
+Parameter,Value
+C,1
+break_ties,False
+cache_size,200
+class_weight,balanced
+coef0,0.0
+decision_function_shape,ovr
+degree,2
+gamma,scale
+kernel,rbf
+max_iter,-1
+probability,True
+random_state,
+shrinking,True
+tol,0.001
+verbose,False
+classes,"Cymodocea Rotundata, Enhalus Acoraides, Thalassia Hemprichii"
