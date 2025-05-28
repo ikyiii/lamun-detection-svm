@@ -63,7 +63,7 @@ def extract_features(image):
     return glcm_features + color_features + shape_features
 
 # Antarmuka Streamlit
-st.title("🔍 Klasifikasi Jenis Lamun dengan SVM")
+st.title("🔍🌿 Lamun Classifier - Klasifikasi Jenis Lamun dengan SVM")
 st.write("Upload gambar daun lamun yang ingin dikenali.")
 
 uploaded_file = st.file_uploader("Upload Gambar", type=["jpg", "jpeg", "png"])
