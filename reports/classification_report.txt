@@ -1,0 +1,15 @@
+                      precision    recall  f1-score   support
+
+ Cymodocea Rotundata       1.00      1.00      1.00        42
+   Enhalus Acoraides       1.00      1.00      1.00        37
+Thalassia Hemprichii       1.00      1.00      1.00        78
+
+            accuracy                           1.00       157
+           macro avg       1.00      1.00      1.00       157
+        weighted avg       1.00      1.00      1.00       157
+
+
+Confusion Matrix:
+[[42  0  0]
+ [ 0 37  0]
+ [ 0  0 78]]
