@@ -6,4 +6,4 @@ our teams
 -Renaldi Anicetus Simbolon
 -Haikal Purnama Aji
 
-you can test our app at https://lamun-detection-using-svm.streamlit.app/
+you can test our app at https://lamun-classifier.streamlit.app/
