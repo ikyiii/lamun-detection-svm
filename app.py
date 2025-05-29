@@ -79,9 +79,9 @@ if uploaded_file is not None:
     elif img_array.shape[2] == 3:
         img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
 
-    st.image(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB),
-             caption='Gambar yang Diupload',
-             use_column_width=True)
+    st.image(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB), 
+         caption='Gambar yang Diupload', 
+         use_container_width=True)
 
     features = extract_features(img_array)
     features_scaled = scaler.transform([features])

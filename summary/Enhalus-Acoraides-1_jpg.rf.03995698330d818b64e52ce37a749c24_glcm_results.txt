@@ -1,0 +1,56 @@
+GLCM Feature Extraction Results
+========================================
+
+Overall Features:
+--------------------
+contrast: 1060.177184
+homogeneity: 0.045880
+energy: 0.010645
+correlation: 0.503742
+
+Detailed Features:
+--------------------
+contrast_d1_a0: 855.445863
+contrast_d1_a45: 1084.725154
+contrast_d1_a90: 965.926041
+contrast_d1_a135: 1081.056812
+contrast_d2_a0: 1148.787128
+contrast_d2_a45: 1084.725154
+contrast_d2_a90: 1179.694508
+contrast_d2_a135: 1081.056812
+contrast_d1_mean: 996.788467
+contrast_d2_mean: 1123.565901
+homogeneity_d1_a0: 0.052138
+homogeneity_d1_a45: 0.044463
+homogeneity_d1_a90: 0.048865
+homogeneity_d1_a135: 0.044666
+homogeneity_d2_a0: 0.044810
+homogeneity_d2_a45: 0.044463
+homogeneity_d2_a90: 0.042966
+homogeneity_d2_a135: 0.044666
+homogeneity_d1_mean: 0.047533
+homogeneity_d2_mean: 0.044226
+energy_d1_a0: 0.010953
+energy_d1_a45: 0.010593
+energy_d1_a90: 0.010791
+energy_d1_a135: 0.010593
+energy_d2_a0: 0.010551
+energy_d2_a45: 0.010593
+energy_d2_a90: 0.010490
+energy_d2_a135: 0.010593
+energy_d1_mean: 0.010732
+energy_d2_mean: 0.010557
+correlation_d1_a0: 0.599641
+correlation_d1_a45: 0.492249
+correlation_d1_a90: 0.547736
+correlation_d1_a135: 0.493966
+correlation_d2_a0: 0.462548
+correlation_d2_a45: 0.492249
+correlation_d2_a90: 0.447583
+correlation_d2_a135: 0.493966
+correlation_d1_mean: 0.533398
+correlation_d2_mean: 0.474087
+contrast_overall: 1060.177184
+homogeneity_overall: 0.045880
+energy_overall: 0.010645
+correlation_overall: 0.503742
