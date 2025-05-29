@@ -65,7 +65,7 @@ def extract_features(image):
 # Antarmuka Streamlit
 st.title("🔍🌿 Lamun Classifier - Klasifikasi Jenis Lamun dengan SVM")
 st.write("Upload gambar daun lamun yang ingin dikenali.")
-st.write("Jenis Lamun yang dapat dikenali : ")
+st.write("🌿 Jenis Lamun yang dapat dikenali : ")
 st.write(" • Thalassia Hemprichii ")
 st.write(" • Cymodocea Rotundata ")
 st.write(" • Enhalus Acoraides.")
