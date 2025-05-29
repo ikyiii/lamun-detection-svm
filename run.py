@@ -92,11 +92,10 @@ def main():
                     st.error(f"Terjadi error: {str(e)}")
         
         elif option == "Run Aplikasi":
-            st.info("Membuka aplikasi Streamlit di tab baru...")
             try:
-                subprocess.Popen(["streamlit", "run", os.path.join("scripts", "app.py")])
-            except Exception as e:
-                st.error(f"Terjadi error: {str(e)}")
+                st.switch_page("scripts/app.py") 
+            except:
+                st.error("Halaman tidak ditemukan.")
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Footer
