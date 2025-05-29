@@ -92,31 +92,11 @@ def main():
                     st.error(f"Terjadi error: {str(e)}")
         
         elif option == "Run Aplikasi":
+            st.info("Membuka aplikasi Streamlit di tab baru...")
             try:
-                # Cek apakah folder scripts dan file app.py ada
-                if not os.path.exists("scripts"):
-                    st.error("Folder 'scripts' tidak ditemukan!")
-                    return
-            
-                if "app.py" not in os.listdir("scripts"):
-                    st.error("File app.py tidak ditemukan di folder scripts!")
-                    st.write("Isi folder scripts:", os.listdir("scripts"))
-                    return
-            
-                st.info("Mengarahkan ke halaman aplikasi...")
-        
-                # Untuk Streamlit versi >=1.27.0
-                try:
-                    st.switch_page("scripts/app.py")
-                except AttributeError:
-                 st.warning("Versi Streamlit tidak mendukung switch_page(), gunakan alternatif:")
-                 st.page_link("scripts/app.py", label="Buka Aplikasi", icon="🌿")
-                except Exception as e:
-                 st.error(f"Gagal mengarahkan ke halaman: {str(e)}")
-            
+                subprocess.Popen(["streamlit", "run", os.path.join("scripts", "app.py")])
             except Exception as e:
-             st.error(f"Terjadi kesalahan: {str(e)}")
-                
+                st.error(f"Terjadi error: {str(e)}")
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Footer
