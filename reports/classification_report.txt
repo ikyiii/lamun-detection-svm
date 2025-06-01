@@ -1,9 +1,9 @@
                       precision    recall  f1-score   support
 
- Cymodocea Rotundata       1.00      1.00      1.00        44
-   Enhalus Acoraides       1.00      1.00      1.00        38
-Thalassia Hemprichii       1.00      1.00      1.00        79
+ Cymodocea Rotundata       1.00      1.00      1.00        30
+   Enhalus Acoraides       1.00      1.00      1.00        24
+Thalassia Hemprichii       1.00      1.00      1.00        56
 
-            accuracy                           1.00       161
-           macro avg       1.00      1.00      1.00       161
-        weighted avg       1.00      1.00      1.00       161
+            accuracy                           1.00       110
+           macro avg       1.00      1.00      1.00       110
+        weighted avg       1.00      1.00      1.00       110

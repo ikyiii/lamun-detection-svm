@@ -2,22 +2,25 @@ import os
 import cv2
 import joblib
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
-from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import StandardScaler
 from extract_features import extract_features
 
 def build_dataset():
-    """Membangun dataset dari file CSV"""
-    df = pd.read_csv("dataset/images/_annotations.csv")
+    """Membangun dataset hanya dari folder train"""
+    train_dir = "dataset/train"
+    csv_path = os.path.join(train_dir, "_annotations.csv")
     
+    if not os.path.exists(csv_path):
+        return None, None, None
+    
+    df = pd.read_csv(csv_path)
     features = []
     labels = []
     
     for _, row in df.iterrows():
-        img_path = f"dataset/images/{row['filename']}"
+        img_path = os.path.join(train_dir, row['filename'])
         if not os.path.exists(img_path):
             continue
             
