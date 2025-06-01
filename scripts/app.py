@@ -130,6 +130,16 @@ def display_prediction_results(model, scaler, image):
         
         # Bagian feedback user
         st.subheader("Validasi Hasil")
+
+        # Pastikan pred_class ada dalam daftar classes
+        if pred_class not in classes:
+            classes.insert(0, pred_class)
+            
+        true_label = st.selectbox(
+            "Label sebenarnya:", 
+            classes,
+            index=classes.index(pred_class)
+        )
             
         col1, col2 = st.columns(2)
         with col1:
@@ -146,16 +156,6 @@ def display_prediction_results(model, scaler, image):
                     st.success(message)
                 else:
                     st.error(message)
-
-    # Pastikan pred_class ada dalam daftar classes
-        if pred_class not in classes:
-            classes.insert(0, pred_class)
-            
-        true_label = st.selectbox(
-            "Label sebenarnya:", 
-            classes,
-            index=classes.index(pred_class)
-        )
         
         # Cek kondisi retraining
         ready, msg = check_retrain_conditions()
