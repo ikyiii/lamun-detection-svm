@@ -1,6 +1,7 @@
 import subprocess
 import os
 import sys
+import time
 import streamlit as st
 
 def main():
@@ -11,102 +12,111 @@ def main():
         initial_sidebar_state="expanded"
     )
 
-    # Custom CSS untuk styling
+    # CSS Styling
     st.markdown("""
     <style>
         .main {
-            background-color: #f8f9fa;
-        }
-        .stButton>button {
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 5px;
-            padding: 10px 24px;
-            font-weight: bold;
-            width: 100%;
-        }
-        .stButton>button:hover {
-            background-color: #45a049;
+            background-color: #f9fbfc;
         }
         .title {
-            color: #2c3e50;
             text-align: center;
-            margin-bottom: 20px;
+            color: #2c3e50;
+            font-weight: bold;
+            margin-bottom: 10px;
         }
-        .option-container {
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+        }
+        .card-container {
             display: flex;
             justify-content: center;
-            margin: 30px 0;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 30px;
         }
-        .option-card {
-            border-radius: 10px;
-            padding: 20px;
+        .card {
             background-color: white;
-            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.1);
-            width: fit-content;
-            margin: 0 auto;
+            border-radius: 12px;
+            padding: 25px 20px;
+            width: 260px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            text-align: center;
         }
-        .option-card:hover {
-            box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
         }
-        .stRadio>div {
+        .card-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .card-desc {
+            font-size: 0.9em;
+            color: #555;
+        }
+        .notification-area {
+            margin-top: 30px;
             display: flex;
             justify-content: center;
         }
-        .button-container {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
+        .footer {
+            text-align: center;
+            color: #aaa;
+            margin-top: 50px;
+            font-size: 0.9em;
         }
     </style>
     """, unsafe_allow_html=True)
 
-    # Header dengan gambar dan judul
-    st.markdown("<h1 class='title'>Lamun Classifier - Klasifikasi Jenis Lamun dengan SVM</h1>", unsafe_allow_html=True)
-    st.markdown("<h5 class='title'>Pilih opsi di bawah untuk memulai: </h5>", unsafe_allow_html=True)
+    # Header
+    st.markdown("<h1 class='title'>🌿 Lamun Classifier</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitle'>Klasifikasi Jenis Lamun Menggunakan Algoritma Support Vector Machine (SVM)</p>", unsafe_allow_html=True)
 
-    # Container untuk option card di tengah
-    with st.container():
-        st.markdown('<div class="option-container">', unsafe_allow_html=True)
-        
-        # Opsi dalam bentuk card
-        option = st.radio(
-            "Pilih mode:",
-            options=["Train Model", "Run Aplikasi"],
-            format_func=lambda x: " " + x,
-            horizontal=True,
-            label_visibility="hidden"
-        )
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Area notifikasi global di tengah
+    notification_area = st.empty()
 
-    # Tombol di tengah dengan container khusus
-    st.markdown('<div class="button-container">', unsafe_allow_html=True)
-    if st.button(f"Jalankan {option}", key="run_button"):
-        if option == "Train Model":
-            with st.spinner("Sedang melatih model, harap tunggu..."):
+    def show_notification(message, type="info", duration=10):
+        """Menampilkan notifikasi selama beberapa detik lalu menghilangkan."""
+        with notification_area.container():
+            if type == "success":
+                notif = st.success(message)
+            elif type == "error":
+                notif = st.error(message)
+            else:
+                notif = st.info(message)
+            time.sleep(duration)
+            notification_area.empty()
+
+    # Card container
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        if st.button("🧪 Train Model", use_container_width=True):
+            with st.spinner("Melatih model SVM... Mohon tunggu sejenak."):
                 try:
                     subprocess.run([sys.executable, os.path.join("scripts", "train_model.py")])
-                    st.success("Pelatihan model selesai!")
+                    show_notification("✅ Pelatihan model berhasil diselesaikan!", "success")
                 except Exception as e:
-                    st.error(f"Terjadi error: {str(e)}")
-        
-        elif option == "Run Aplikasi":
-            st.info("Membuka aplikasi Streamlit di tab baru...")
-            try:
-                subprocess.Popen(["streamlit", "run", os.path.join("scripts", "app.py")])
-            except Exception as e:
-                st.error(f"Terjadi error: {str(e)}")
-    st.markdown('</div>', unsafe_allow_html=True)
+                    show_notification(f"❌ Terjadi kesalahan saat melatih model: {str(e)}", "error")
+
+    with col2:
+        if st.button("🚀 Run Aplikasi", use_container_width=True):
+            with st.spinner("Membuka aplikasi Streamlit..."):
+                try:
+                    subprocess.Popen(["streamlit", "run", os.path.join("scripts", "app.py")])
+                    show_notification("🔄 Membuka aplikasi Streamlit di tab baru...", "info")
+                except Exception as e:
+                    show_notification(f"❌ Gagal membuka aplikasi: {str(e)}", "error")
 
     # Footer
     st.markdown("---")
-    st.markdown(
-        "<div style='text-align: center; color: #7f8c8d;'>"
-        "© 2025 Lamun Classifier | Senggarang Selatan"
-        "</div>",
-        unsafe_allow_html=True
-    )
+    st.markdown("<div class='footer'>© 2025 Lamun Classifier | Senggarang Selatan</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

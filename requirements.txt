@@ -1,9 +1,11 @@
 streamlit
 scikit-learn
-opencv-python-headless
+opencv-python
 scikit-image
 numpy
 pandas
 matplotlib
 imbalanced-learn
+joblib
 Pillow
+opencv-python-headless

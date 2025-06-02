@@ -6,26 +6,48 @@ from PIL import Image
 import os
 import pandas as pd
 import uuid
+import base64
+from io import BytesIO
 from train_model_autoretrain import retrain_model
 from extract_features import extract_features
 
-# Konfigurasi
+# Set page configuration
+st.set_page_config(
+    page_title="Lamun Classifier", 
+    page_icon="🌿",
+    layout="centered")
+
+# Configuration
 CONFIG = {
-    'min_samples': 10,          # Minimal sampel untuk training
-    'min_classes': 3,          # Minimal kelas berbeda
-    'retrain_threshold': 10,    # Minimal sampel baru untuk retrain
-    'dataset_path': "dataset/train"  # Path untuk menyimpan data baru
+    'min_samples': 8,
+    'min_classes': 3,
+    'retrain_threshold': 10,
+    'compression_quality': 90,
+    'image_size': (640, 480),        # Original size for dataset storage
+    'display_size': (150, 150),      # Small size for preview
+    'split_ratios': {'train': 0.7, 'valid': 0.2, 'test': 0.1}
 }
 
-# Session state untuk tracking
+# Initialize session state  
 if 'new_samples_added' not in st.session_state:
     st.session_state.new_samples_added = 0
-if 'last_trained' not in st.session_state:
-    st.session_state.last_trained = 0
+
+# Helper function to convert image to base64
+def image_to_base64(img_array):
+    _, buffer = cv2.imencode('.jpg', img_array)
+    return base64.b64encode(buffer).decode()
+
+def get_split_folder():
+    rand = np.random.random()
+    if rand < CONFIG['split_ratios']['train']:
+        return 'train'
+    elif rand < CONFIG['split_ratios']['train'] + CONFIG['split_ratios']['valid']:
+        return 'valid'
+    else:
+        return 'test'
 
 @st.cache_resource
 def load_model():
-    """Load model dengan error handling"""
     try:
         model = joblib.load("model/svm_model.pkl")
         scaler = joblib.load("model/scaler.pkl")
@@ -33,241 +55,205 @@ def load_model():
     except Exception as e:
         return None, None, str(e)
 
-def save_to_dataset(image, label):
-    """Simpan data baru ke folder train"""
+def compress_image(image):
     try:
-        # 1. Pastikan folder dataset ada
-        os.makedirs(CONFIG['dataset_path'], exist_ok=True)
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), CONFIG['compression_quality']]
+        _, encoded_img = cv2.imencode('.jpg', image, encode_param)
+        return cv2.imdecode(encoded_img, cv2.IMREAD_COLOR)
+    except Exception as e:
+        st.error(f"Compression error: {str(e)}")
+        return image
+
+def save_to_dataset(image, label):
+    try:
+        # Use original size for dataset storage
+        compressed_img = compress_image(image)
+        resized_img = cv2.resize(compressed_img, CONFIG['image_size'])
         
-        # 2. Simpan gambar
+        split = get_split_folder()
         filename = f"{uuid.uuid4().hex}.jpg"
-        img_path = os.path.join(CONFIG['dataset_path'], filename)
-        cv2.imwrite(img_path, image)
+        img_path = f"dataset/{split}/images/{filename}"
+        os.makedirs(os.path.dirname(img_path), exist_ok=True)
+        cv2.imwrite(img_path, resized_img)
         
-        # 3. Update CSV annotations
         new_row = pd.DataFrame([[
-            filename, 640, 480, label, 0, 0, 640, 480
+            filename, *CONFIG['image_size'], label, 0, 0, *CONFIG['image_size']
         ]], columns=["filename","width","height","class","xmin","ymin","xmax","ymax"])
         
-        csv_path = os.path.join(CONFIG['dataset_path'], "_annotations.csv")
-        
-        if os.path.exists(csv_path):
-            df = pd.read_csv(csv_path)
-            df = pd.concat([df, new_row], ignore_index=True)
-        else:
-            df = new_row
-            
+        csv_path = f"dataset/{split}/_annotations.csv"
+        df = pd.read_csv(csv_path) if os.path.exists(csv_path) else pd.DataFrame()
+        df = pd.concat([df, new_row], ignore_index=True)
         df.to_csv(csv_path, index=False)
         
-        # 4. Update counter
         st.session_state.new_samples_added += 1
-        return True, "Data berhasil disimpan ke dataset training"
+        return True, f"Data saved to {split} set"
     except Exception as e:
-        return False, f"Gagal menyimpan data: {str(e)}"
+        return False, str(e)
 
 def check_retrain_conditions():
-    """Cek apakah perlu dilakukan retraining"""
-    # 1. Cukup sampel baru?
     if st.session_state.new_samples_added < CONFIG['retrain_threshold']:
-        return False, f"Dibutuhkan {CONFIG['retrain_threshold']} sampel baru (saat ini: {st.session_state.new_samples_added})"
+        return False, f"Need {CONFIG['retrain_threshold']} new samples (current: {st.session_state.new_samples_added})"
     
-    # 2. Cek dataset lengkap
-    csv_path = os.path.join(CONFIG['dataset_path'], "_annotations.csv")
-    if not os.path.exists(csv_path):
-        return False, "File annotations tidak ditemukan"
+    required_files = [
+        "dataset/train/_annotations.csv",
+        "dataset/valid/_annotations.csv",
+        "dataset/test/_annotations.csv"
+    ]
     
-    try:
-        df = pd.read_csv(csv_path)
-        unique_classes = df['class'].unique()
-        
-        if len(unique_classes) < CONFIG['min_classes']:
-            return False, f"Dibutuhkan minimal {CONFIG['min_classes']} kelas berbeda"
-            
-        if len(df) < CONFIG['min_samples']:
-            return False, f"Dibutuhkan minimal {CONFIG['min_samples']} sampel"
-            
-        return True, "Kondisi retraining terpenuhi"
-    except Exception as e:
-        return False, f"Error membaca dataset: {str(e)}"
-
-def preprocess_image(image):
-    """Preprocessing gambar untuk konsistensi"""
-    # Konversi ke numpy array jika belum
-    if isinstance(image, Image.Image):
-        image = np.array(image)
+    if not all(os.path.exists(f) for f in required_files):
+        return False, "Dataset files missing"
     
-    # Konversi ke BGR (OpenCV format)
-    if image.ndim == 2:  # Grayscale
-        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-    elif image.shape[2] == 4:  # RGBA
-        image = cv2.cvtColor(image, cv2.COLOR_RGBA2BGR)
-    else:  # RGB
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    dfs = []
+    for split in ['train', 'valid', 'test']:
+        dfs.append(pd.read_csv(f"dataset/{split}/_annotations.csv"))
+    df_combined = pd.concat(dfs)
     
-    return image
+    if len(df_combined['class'].unique()) < CONFIG['min_classes']:
+        return False, f"Need {CONFIG['min_classes']} different classes"
+    
+    return True, "Retraining conditions met"
 
-def display_prediction_results(model, scaler, image):
-    """Tampilkan hasil prediksi dan opsi feedback"""
-    try:
-        # Ekstrak fitur dan prediksi
-        features = extract_features(image)
-        if features is None:
-            raise ValueError("Gagal mengekstrak fitur dari gambar")
-            
-        features_scaled = scaler.transform([features])
-        prob = model.predict_proba(features_scaled)[0]
-        
-        # Pastikan classes adalah string
-        classes = [str(cls) for cls in model.classes_]
-        pred_class = str(model.classes_[np.argmax(prob)])
-        
-        # Tampilkan hasil
-        st.success(f"Hasil Prediksi: {pred_class}")
-        
-        # Visualisasi probabilitas
-        prob_data = {str(cls): prob[i] for i, cls in enumerate(model.classes_)}
-        st.bar_chart(prob_data)
-        
-        # Bagian feedback user
-        st.subheader("Validasi Hasil")
-
-        # Pastikan pred_class ada dalam daftar classes
-        if pred_class not in classes:
-            classes.insert(0, pred_class)
-            
-        true_label = st.selectbox(
-            "Label sebenarnya:", 
-            classes,
-            index=classes.index(pred_class)
-        )
-            
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✅ Prediksi Benar"):
-                success, message = save_to_dataset(image, pred_class)
-                if success:
-                    st.success(message)
-                else:
-                    st.error(message)
-        with col2:
-            if st.button("❌ Prediksi Salah"):
-                success, message = save_to_dataset(image, true_label)
-                if success:
-                    st.success(message)
-                else:
-                    st.error(message)
-        
-        # Cek kondisi retraining
-        ready, msg = check_retrain_conditions()
-        if ready:
-            if st.button("🔄 Latih Ulang Model dengan Data Baru"):
-                with st.spinner("Melatih model dengan data terbaru..."):
-                    success, message = retrain_model()
-                    if success:
-                        st.success("Model berhasil diperbarui!")
-                        st.session_state.new_samples_added = 0
-                        st.cache_resource.clear()  # Clear cache untuk load model baru
-                    else:
-                        st.error(f"Gagal: {message}")
-        else:
-            st.info(f"Info: {msg}")
-            
-    except Exception as e:
-        st.error(f"Error dalam prediksi: {str(e)}")
-
-
-def main():
-    # Konfigurasi halaman
-    st.set_page_config(
-        page_title="Lamun Classifier - Klasifikasi Jenis Lamun dengan SVM",
-        page_icon="🌿",
-        layout="centered",
-        initial_sidebar_state="expanded"
-    )
-
-    # Header aplikasi
-    st.title("🔍🌿 Lamun Classifier")
-    st.markdown("""
+# UI Styling
+st.markdown("""
     <style>
-    .title {
-        color: #2e86ab;
+    .main {
+        background-color: #f5fff5;
+        font-family: 'Segoe UI', sans-serif;
     }
-    .sidebar .sidebar-content {
-        background-color: #f8f9fa;
+    h1 {
+        color: #2e7d32;
+        text-align: center;
+        font-weight: bold;
+    }
+    h2, h3 {
+        color: #1b5e20;
+    }
+    .stButton button {
+        background-color: #4caf50;
+        color: white;
+        border-radius: 8px;
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+    }
+    .stButton button:hover {
+        background-color: #388e3c;
+    }
+    .stTextInput input {
+        border: 2px solid #4caf50;
+        border-radius: 5px;
+    }
+    .stSelectbox select {
+        border: 2px solid #4caf50;
+        border-radius: 5px;
+    }
+    .footer {
+        margin-top: 30px;
+        text-align: center;
+        color: #aaa;
+        font-size: 14px;
+    }
+    .preview-container {
+        display: flex;
+        justify-content: center;
+        margin: 15px 0;
+    }
+    .preview-image {
+        width: 150px;
+        height: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     </style>
-    """, unsafe_allow_html=True)
-    
-    st.write("Upload gambar lamun untuk diklasifikasi menggunakan model SVM")
-    
-    # Informasi kelas yang dikenali
-    with st.expander("🌿 Jenis Lamun yang Dikenali"):
-        st.write("""
-        - Thalassia Hemprichii
-        - Cymodocea Rotundata  
-        - Enhalus Acoraides
-        """)
-    
-    # Load model
+""", unsafe_allow_html=True)
+
+def main():
+    st.title("🔍🌿 Lamun Classifier - Klasifikasi Jenis Lamun dengan SVM")
+    st.markdown("<p style='text-align:center; font-size:18px;'>Upload gambar untuk klasifikasi jenis lamun</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;'><strong>Thalassia Hemprichii | Cymodocea Rotundata | Enhalus Acoraides</strong></p>", unsafe_allow_html=True)
+
     model, scaler, model_error = load_model()
     if model_error:
-        st.error(f"Error memuat model: {model_error}")
-        st.warning("Aplikasi tetap berjalan tetapi fitur prediksi tidak tersedia")
-    
-    # Upload gambar
-    uploaded_file = st.file_uploader(
-        "Pilih gambar lamun...", 
-        type=["jpg", "jpeg", "png"],
-        accept_multiple_files=False
-    )
-    
+        st.warning(f"⚠️ Model tidak ditemukan: {model_error}")
+
+    uploaded_file = st.file_uploader("📷 Pilih gambar...", type=["jpg", "jpeg", "png"])
+
     if uploaded_file:
-        try:
-            # Baca dan preprocess gambar
-            image = Image.open(uploaded_file)
-            st.image(image, caption="Gambar yang diupload", width=300)
-            
-            img_array = preprocess_image(image)
-            
-            # Lakukan prediksi jika model tersedia
-            if model and scaler:
-                display_prediction_results(model, scaler, img_array)
-            else:
-                st.warning("Model tidak tersedia, tidak dapat melakukan prediksi")
-                
-        except Exception as e:
-            st.error(f"Error memproses gambar: {str(e)}")
-    
-    # Sidebar informasi
-    st.sidebar.title("Informasi Aplikasi")
-    st.sidebar.markdown("""
-    Aplikasi ini menggunakan model SVM untuk mengklasifikasikan jenis lamun:
-    - **Thalassia Hemprichii**
-    - **Cymodocea Rotundata**
-    - **Enhalus Acoraides**
-    """)
-    
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("Statistik Data")
-    if model:
-        st.sidebar.write(f"Jumlah kelas: {len(model.classes_)}")
-    
-    if os.path.exists(os.path.join(CONFIG['dataset_path'], "_annotations.csv")):
-        try:
-            df = pd.read_csv(os.path.join(CONFIG['dataset_path'], "_annotations.csv"))
-            st.sidebar.write(f"Total sampel training: {len(df)}")
-            st.sidebar.write(f"Sampel baru ditambahkan: {st.session_state.new_samples_added}")
-        except:
-            pass
-    
-    # Footer
+        # Process uploaded image
+        image = Image.open(uploaded_file)
+        img_array = np.array(image)
+
+        # Convert image format if needed
+        if img_array.ndim == 2:
+            img_array = cv2.cvtColor(img_array, cv2.COLOR_GRAY2BGR)
+        elif img_array.shape[2] == 4:
+            img_array = cv2.cvtColor(img_array, cv2.COLOR_RGBA2BGR)
+        else:
+            img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+
+        # Create small preview (150x150)
+        display_img = cv2.resize(img_array, CONFIG['display_size'])
+        
+        # Display small preview with custom styling
+        st.markdown(
+            f"""
+            <div class="preview-container">
+                <img src="data:image/jpeg;base64,{image_to_base64(display_img)}" 
+                     class="preview-image"
+                     alt="Preview Gambar">
+            </div>
+            <p style='text-align:center; font-size:14px; color:#666;'>
+                Preview Gambar ({CONFIG['display_size'][0]}x{CONFIG['display_size'][1]})
+            </p>
+            """,
+            unsafe_allow_html=True
+        )
+
+        if model and scaler:
+            try:
+                # Feature extraction uses original image (not the small preview)
+                features = extract_features(img_array)
+                features = scaler.transform([features])
+                prob = model.predict_proba(features)[0]
+                pred_class = model.classes_[np.argmax(prob)]
+
+                st.success(f"🎯 Prediksi: **{pred_class}** ({max(prob):.2%})")
+                st.bar_chart({k:v for k,v in zip(model.classes_, prob)})
+
+                st.subheader("✅ Validasi Hasil")
+                true_label = st.selectbox("Pilih label yang benar:", model.classes_)
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("✅ Simpan sebagai Benar"):
+                        save_to_dataset(img_array, pred_class)
+                        st.success("Gambar disimpan sesuai prediksi")
+                with col2:
+                    if st.button("❌ Simpan sebagai Salah"):
+                        save_to_dataset(img_array, true_label)
+                        st.success("Gambar disimpan dengan label baru")
+
+                ready, msg = check_retrain_conditions()
+                if ready:
+                    if st.button("🔄 Retrain Model Baru"):
+                        with st.spinner("Sedang melatih ulang model..."):
+                            success, message = retrain_model()
+                            if success:
+                                st.success("✅ Model berhasil diperbarui!")
+                                st.session_state.new_samples_added = 0
+                                st.cache_resource.clear()
+                            else:
+                                st.error(f"❌ Gagal memperbarui model: {message}")
+                else:
+                    st.info(f"ℹ️ Persyaratan belum tercapai: {msg}")
+
+            except Exception as e:
+                st.error(f"🚨 Kesalahan: {str(e)}")
+
     st.markdown("---")
-    st.markdown(
-        "<div style='text-align: center; color: #7f8c8d;'>"
-        "© 2025 Lamun Classifier | Senggarang Selatan"
-        "</div>",
-        unsafe_allow_html=True
-    )
+    st.markdown("<div class='footer'>© 2025 Lamun Classifier | Senggarang Selatan</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
