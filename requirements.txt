@@ -1,6 +1,5 @@
 streamlit
 scikit-learn
-opencv-python
 scikit-image
 numpy
 pandas
